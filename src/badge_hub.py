@@ -477,18 +477,6 @@ def sync_all_devices(mgr):
     time.sleep(2)  # allow BLE time to disconnect
 
 
-def sync_all_devices_ids(mgr):
-    logger.info('Syncing all badges recording for id')
-    mgr.pull_badges_list()
-    for mac in mgr.badges:
-        bdg = mgr.badges.get(mac)
-        bdg.sync_ids() 
-        time.sleep(2)  # requires sleep between devices
-
-    time.sleep(2)  # allow BLE time to disconnect
-
-
-
 def devices_scanner(mgr):
     logger.info('Scanning for badges')
     mgr.pull_badges_list()
@@ -550,45 +538,6 @@ def start_all_devices(mgr):
         time.sleep(2)  # allow BLE time to disconnect
 
 
-def ids_all_devices(mgr):
-    logger.info('Starting all badges recording.')
-    while True:
-        mgr.pull_badges_list()
-
-        logger.info("Scanning for devices...")
-        scanned_devices = scan_for_devices(mgr.badges.keys())
-        for device in scanned_devices:
- 
-            dev_info = device['device_info']
-            
-            if dev_info ['adv_payload']:
-                badge_id = dev_info ['adv_payload']['badge_id']
-                project_id = dev_info ['adv_payload']['project_id']
-                
-                
-                
-                if sync == 0 or audio == 0 or proximity == 0:
-                    logger.info("Starting {}".format(device['mac']))
-                    bdg = mgr.badges.get(device['mac'])
-                    bdg.start_recording()
-                    time.sleep(2)  # requires sleep between devices
-
-                else:
-                    logger.info("No need to start {}".format(device['mac']))
-
-        time.sleep(2)  # allow BLE time to disconnect
-
-
-
-
-
-
-
-
-
-
-
-
 def load_badges(mgr, csv_file_name):
     logger.info("Loading badges from: {}".format(csv_file_name))
     with open(csv_file_name, 'r') as csvfile:
@@ -621,9 +570,6 @@ def add_scan_command_options(subparsers):
 
 def add_sync_all_command_options(subparsers):
     sa_parser = subparsers.add_parser('sync_all', help='Send date to all devices in whitelist')
-
-def add_sync_ids_command_options(subparsers):
-    sa_parser = subparsers.add_parser('sync_ids', help='Send ids to all devices in whitelist')
 
 
 def add_start_all_command_options(subparsers):
@@ -658,7 +604,6 @@ if __name__ == "__main__":
     add_pull_command_options(subparsers)
     add_scan_command_options(subparsers)
     add_sync_all_command_options(subparsers)
-    add_sync_ids_command_options(subparsers)
     add_start_all_command_options(subparsers)
     add_load_badges_command_options(subparsers)
     add_print_badges_command_options(subparsers)
@@ -671,10 +616,7 @@ if __name__ == "__main__":
         reset()
 
     if args.mode == "sync_all":
-        sync_all_devices(mgr)
-
-    if args.mode == "sync_ids":
-        sync_all_devices_ids(mgr)    
+        sync_all_devices(mgr)  
 
     # scan for devices
     if args.mode == "scan":

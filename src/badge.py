@@ -141,7 +141,6 @@ class BadgeDelegate(DefaultDelegate):
     expected = Expect.none
 
     gotStatus = False
-    gotIds = False
     gotTimestamp = False
     gotEndOfData = False #flag that indicates no more data will be sent
 
@@ -169,7 +168,6 @@ class BadgeDelegate(DefaultDelegate):
         self.expected = Expect.none
 
         self.gotStatus = False
-        self.gotIds = False
         self.gotTimestamp = False
         self.gotEndOfData = False
         self.gotEndOfScans = False
@@ -189,7 +187,6 @@ class BadgeDelegate(DefaultDelegate):
             self.dataReady = True
             self.clockSet,self.scanning,self.recording,self.timestamp_sec,self.timestamp_ms,self.voltage = struct.unpack('<BBBLHf',data)
             self.gotStatus = True
-            self.gotIds = True
             self.expected = Expect.none
         elif self.expected == Expect.timestamp:
             self.timestamp_sec,self.timestamp_ms = struct.unpack('<LH',data)
@@ -626,8 +623,6 @@ class Badge:
         return retcode
 
     
-
-
 def print_bytes(data):
     """
     Prints a given string as an array of unsigned bytes
