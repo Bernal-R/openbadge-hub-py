@@ -68,7 +68,7 @@ logger.addHandler(ch)
 def get_devices(device_file):
     """
     Returns a list of devices included in devices.txt
-    Format is device_mac<space>device_name
+    Format is device_mac<space>device_name<space>badge_id<space>project_id
     :param device_file:
     :return:
     """
@@ -79,10 +79,27 @@ def get_devices(device_file):
 
     regex = re.compile(r'^([A-Fa-f0-9]{2}(?::[A-Fa-f0-9]{2}){5}).*')
 
+    #extracting badge id and project from device file
+    with open(device_file, 'r') as devices_macs:
+        ids = [re.split(" +",lines)[2:] for lines in devices_macs]
+        badge_project_ids = ids[2:]
+        badge_ids = [arr[0] for arr in badge_project_ids]
+        project_ids = [arr[1] for arr in badge_project_ids]
+
+
+
     with open(device_file, 'r') as devices_macs:
         devices = [regex.findall(line) for line in devices_macs]
         devices = filter(lambda x: x, map(lambda x: x[0] if x else False, devices))
         devices = [d.upper() for d in devices]
+
+
+
+    #mapping badge id and project id to mac address
+        mac_id_map = {}    
+        for i in range(len(devices)):
+            mac_id_map[devices[i]] = badge_project_ids[i]
+
 
     for d in devices:
         logger.info("    {}".format(d))
@@ -205,6 +222,9 @@ def _create_pending_file_name(data_type):
         filename =  "{}{}_{}.txt".format(pending_file_prefix, now, data_type)
 
     return filename 
+
+
+
      
 def dialogue(bdg, activate_audio, activate_proximity, mode="server"):
     """
@@ -451,10 +471,22 @@ def sync_all_devices(mgr):
     mgr.pull_badges_list()
     for mac in mgr.badges:
         bdg = mgr.badges.get(mac)
-        bdg.sync_timestamp()
+        bdg.sync_timestamp() 
         time.sleep(2)  # requires sleep between devices
 
     time.sleep(2)  # allow BLE time to disconnect
+
+
+def sync_all_devices_ids(mgr):
+    logger.info('Syncing all badges recording for id')
+    mgr.pull_badges_list()
+    for mac in mgr.badges:
+        bdg = mgr.badges.get(mac)
+        bdg.sync_ids() 
+        time.sleep(2)  # requires sleep between devices
+
+    time.sleep(2)  # allow BLE time to disconnect
+
 
 
 def devices_scanner(mgr):
@@ -485,12 +517,56 @@ def start_all_devices(mgr):
         logger.info("Scanning for devices...")
         scanned_devices = scan_for_devices(mgr.badges.keys())
         for device in scanned_devices:
+ 
             dev_info = device['device_info']
+            
             if dev_info ['adv_payload']:
                 sync = dev_info ['adv_payload']['sync_status']
                 audio = dev_info ['adv_payload']['audio_status']
                 proximity = dev_info ['adv_payload']['proximity_status']
+                badge_id = dev_info ['adv_payload']['badge_id']
+                project_id = dev_info ['adv_payload']['project_id']
+                
+                
+                if sync == 0 or audio == 0 or proximity == 0:
+                    if(project_id==0):
+                        logger.info("changing project ids {}".format(device['mac']))
+                        dev_info ['adv_payload']['project_id']=250
+                        
+                        logger.info("Starting {}".format(device['mac']))
+                        bdg = mgr.badges.get(device['mac'])
+                        bdg.start_recording()
+                        time.sleep(2)  # requires sleep between devices
 
+                    else:
+                        logger.info("Starting {}".format(device['mac']))
+                        bdg = mgr.badges.get(device['mac'])
+                        bdg.start_recording()
+                        time.sleep(2)  # requires sleep between devices
+
+                else:
+                    logger.info("No need to start {}".format(device['mac']))
+
+        time.sleep(2)  # allow BLE time to disconnect
+
+
+def ids_all_devices(mgr):
+    logger.info('Starting all badges recording.')
+    while True:
+        mgr.pull_badges_list()
+
+        logger.info("Scanning for devices...")
+        scanned_devices = scan_for_devices(mgr.badges.keys())
+        for device in scanned_devices:
+ 
+            dev_info = device['device_info']
+            
+            if dev_info ['adv_payload']:
+                badge_id = dev_info ['adv_payload']['badge_id']
+                project_id = dev_info ['adv_payload']['project_id']
+                
+                
+                
                 if sync == 0 or audio == 0 or proximity == 0:
                     logger.info("Starting {}".format(device['mac']))
                     bdg = mgr.badges.get(device['mac'])
@@ -503,6 +579,16 @@ def start_all_devices(mgr):
         time.sleep(2)  # allow BLE time to disconnect
 
 
+
+
+
+
+
+
+
+
+
+
 def load_badges(mgr, csv_file_name):
     logger.info("Loading badges from: {}".format(csv_file_name))
     with open(csv_file_name, 'r') as csvfile:
@@ -510,6 +596,7 @@ def load_badges(mgr, csv_file_name):
         for row in badgereader:
             logger.info("Asking to create badge: {}".format(row))
             mgr.create_badge(row[0],row[1],row[2])
+
 
 
 def print_badges(mgr):
@@ -534,6 +621,9 @@ def add_scan_command_options(subparsers):
 
 def add_sync_all_command_options(subparsers):
     sa_parser = subparsers.add_parser('sync_all', help='Send date to all devices in whitelist')
+
+def add_sync_ids_command_options(subparsers):
+    sa_parser = subparsers.add_parser('sync_ids', help='Send ids to all devices in whitelist')
 
 
 def add_start_all_command_options(subparsers):
@@ -568,6 +658,7 @@ if __name__ == "__main__":
     add_pull_command_options(subparsers)
     add_scan_command_options(subparsers)
     add_sync_all_command_options(subparsers)
+    add_sync_ids_command_options(subparsers)
     add_start_all_command_options(subparsers)
     add_load_badges_command_options(subparsers)
     add_print_badges_command_options(subparsers)
@@ -581,6 +672,9 @@ if __name__ == "__main__":
 
     if args.mode == "sync_all":
         sync_all_devices(mgr)
+
+    if args.mode == "sync_ids":
+        sync_all_devices_ids(mgr)    
 
     # scan for devices
     if args.mode == "scan":
@@ -598,5 +692,7 @@ if __name__ == "__main__":
 
     if args.mode == "print_badges":
         print_badges(mgr)
+
+
 
     exit(0)

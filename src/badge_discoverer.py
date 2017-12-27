@@ -42,6 +42,7 @@ class BadgeDiscoverer:
                     mac = scan_item.addr.upper()
                     scan_date = datetime.datetime.now()
                     adv_payload = self.unpack_broadcast_data(scan_item.rawData)
+
                     if not (mac in scan_items):
                         scan_items[mac] = {'scan_date':scan_date,'rssi':rssi,'adv_payload':adv_payload}
                     else:
@@ -95,7 +96,7 @@ class BadgeDiscoverer:
                     adv_payload['status_flags'] = payload[2]
                     adv_payload['badge_id'] = payload[3]
                     adv_payload['project_id'] = payload[4]
-
+                    
                     # Check if the 1st bit is set
                     sync_status = 1 if adv_payload['status_flags'] & 0b1 > 0 else 0
                     adv_payload['sync_status'] = sync_status

@@ -141,6 +141,7 @@ class BadgeDelegate(DefaultDelegate):
     expected = Expect.none
 
     gotStatus = False
+    gotIds = False
     gotTimestamp = False
     gotEndOfData = False #flag that indicates no more data will be sent
 
@@ -151,7 +152,8 @@ class BadgeDelegate(DefaultDelegate):
     timestamp_sec = None # badge time in seconds
     timestamp_ms = None  # fractional part of badge time
     voltage = None       # badge battery voltage
-
+    badge_id = None #badge id
+    project_id = None #project id
     timestamp = None # badge time as timestamp (includes seconds+milliseconds)
 
     def __init__(self, params):
@@ -167,6 +169,7 @@ class BadgeDelegate(DefaultDelegate):
         self.expected = Expect.none
 
         self.gotStatus = False
+        self.gotIds = False
         self.gotTimestamp = False
         self.gotEndOfData = False
         self.gotEndOfScans = False
@@ -186,6 +189,7 @@ class BadgeDelegate(DefaultDelegate):
             self.dataReady = True
             self.clockSet,self.scanning,self.recording,self.timestamp_sec,self.timestamp_ms,self.voltage = struct.unpack('<BBBLHf',data)
             self.gotStatus = True
+            self.gotIds = True
             self.expected = Expect.none
         elif self.expected == Expect.timestamp:
             self.timestamp_sec,self.timestamp_ms = struct.unpack('<LH',data)
@@ -272,6 +276,14 @@ class Badge:
     children = {}
 
     @property
+    def badge_id(self):
+        return self.__badge_id
+
+    @property   
+    def project_id(self):
+        return self.__project_id    
+
+    @property
     def last_proximity_ts(self):
         return self.__last_proximity_ts
 
@@ -328,13 +340,15 @@ class Badge:
             # no value is set yetyet
             return True
 
-    def __init__(self, addr,logger, key, init_audio_ts_int=None, init_audio_ts_fract=None, init_proximity_ts=None, init_voltage=None):
+    def __init__(self,addr,logger, key,badge_id,project_id, init_audio_ts_int=None, init_audio_ts_fract=None, init_proximity_ts=None, init_voltage=None):
         #if self.children.get(key):
         #    return self.children.get(key)
-        self.children[key] = self
-        self.key = key
+        self.children[key] = self        
+        self.key = key        
         self.addr = addr
         self.logger = adapter = BadgeAddressAdapter(logger, {'addr': addr})
+        self.badge_id = badge_id
+        self.project_id = project_id
         self.dlg = None
         self.conn = None
         self.connDialogue = BadgeDialogue(self)
@@ -359,9 +373,10 @@ class Badge:
 
     # sends status request with UTC time to the badge
     def sendStatusRequest(self):
-        long_epoch_seconds, ts_fract = now_utc_epoch()
-        self.dlg.expected = Expect.status
-        return self.conn.write('<cLH',"s",long_epoch_seconds,ts_fract)
+        long_epoch_seconds, ts_fract = now_utc_epoch()               
+        self.dlg.expected = Expect.status       
+        return self.conn.write('<cLHHB',"s",long_epoch_seconds,ts_fract,int(self.badge_id), int(self.project_id))
+
 
     # sends request to start recording, with specified timeout
     #   (if after timeout minutes badge has not seen server, it will stop recording)
@@ -434,7 +449,7 @@ class Badge:
                     self.sendIdentifyReq(10)
 
                 if self.dlg.timestamp_sec != 0:
-                    self.logger.info("Badge datetime was: {},{}".format(self.dlg.timestamp_sec, self.dlg.timestamp_ms))
+                    self.logger.info("Badge datetime was: {},{} and Badge id : {} , and project id : {}".format(self.dlg.timestamp_sec, self.dlg.timestamp_ms,self.badge_id,self.project_id))
                 else:
                     self.logger.info("Badge previously unsynced.")
 
@@ -453,6 +468,7 @@ class Badge:
             self.disconnect()
 
         return retcode
+        
 
     def start_recording(self):
         """
@@ -513,6 +529,7 @@ class Badge:
             self.disconnect()
 
         return retcode
+
 
     def pull_data(self, activate_audio, activate_proximity):
         """
@@ -608,6 +625,8 @@ class Badge:
 
         return retcode
 
+    
+
 
 def print_bytes(data):
     """
@@ -694,10 +713,11 @@ if __name__ == "__main__":
     #logger = logging.getLogger("Test")
     #logger.setLevel(logging.DEBUG)
 
-    b = Badge("AAAAA",logger,"ABCDE",100,10,100)
+    b = Badge("AAAAA",logger,"ABCDE",100,10,100,1,250)
+   
     print(b.last_audio_ts_int,b.last_audio_ts_fract)
     b.set_audio_ts(110,1)
     print(b.last_audio_ts_int, b.last_audio_ts_fract)
-    b.set_audio_ts(100,1)
-    print(b.last_audio_ts_int, b.last_audio_ts_fract)
+   # b.set_audio_ts(100,1)
+   # print(b.last_audio_ts_int, b.last_audio_ts_fract)
 
