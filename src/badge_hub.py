@@ -65,48 +65,6 @@ logger.addHandler(fh)
 logger.addHandler(ch)
 
 
-def get_devices(device_file):
-    """
-    Returns a list of devices included in devices.txt
-    Format is device_mac<space>device_name<space>badge_id<space>project_id
-    :param device_file:
-    :return:
-    """
-    if not os.path.isfile(device_file):
-        logger.error("Cannot find devices file: {}".format(device_file))
-        exit(1)
-    logger.info("Reading whitelist:")
-
-    regex = re.compile(r'^([A-Fa-f0-9]{2}(?::[A-Fa-f0-9]{2}){5}).*')
-
-    #extracting badge id and project from device file
-    with open(device_file, 'r') as devices_macs:
-        ids = [re.split(" +",lines)[2:] for lines in devices_macs]
-        badge_project_ids = ids[2:]
-        badge_ids = [arr[0] for arr in badge_project_ids]
-        project_ids = [arr[1] for arr in badge_project_ids]
-
-
-
-    with open(device_file, 'r') as devices_macs:
-        devices = [regex.findall(line) for line in devices_macs]
-        devices = filter(lambda x: x, map(lambda x: x[0] if x else False, devices))
-        devices = [d.upper() for d in devices]
-
-
-
-    #mapping badge id and project id to mac address
-        mac_id_map = {}    
-        for i in range(len(devices)):
-            mac_id_map[devices[i]] = badge_project_ids[i]
-
-
-    for d in devices:
-        logger.info("    {}".format(d))
-
-    return devices
-
-
 def round_float_for_log(x):
     return float("{0:.3f}".format(x))
 
@@ -519,7 +477,6 @@ def start_all_devices(mgr):
                 if sync == 0 or audio == 0 or proximity == 0:
                     if(project_id==0):
                         logger.info("changing project ids {}".format(device['mac']))
-                        dev_info ['adv_payload']['project_id']=250
                         
                         logger.info("Starting {}".format(device['mac']))
                         bdg = mgr.badges.get(device['mac'])

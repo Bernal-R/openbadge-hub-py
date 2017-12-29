@@ -26,7 +26,7 @@ class BadgeManagerStandalone():
     def _read_file(self,device_file):
         """
         refreshes an internal list of devices included in device_macs.txt
-        Format is device_mac<space>device_name<space>badge_id<space>project_id
+        Format is device_mac<space>badge_id<space>project_id<space>device_name
         :param device_file:
         :return:
         """
@@ -35,37 +35,31 @@ class BadgeManagerStandalone():
             exit(1)
         self.logger.info("Reading devices from file: {}".format(device_file))
 
-        regex = re.compile(r'^([A-Fa-f0-9]{2}(?::[A-Fa-f0-9]{2}){5}).*')
-       
-        #extracting badge id and project from device file
-        with open(device_file, 'r') as devices_macs:
-            ids = [re.split(" +",lines)[2:] for lines in devices_macs]
-            badge_project_ids = ids[2:]
-            badge_ids = [arr[0] for arr in badge_project_ids]
-            project_ids = [arr[1] for arr in badge_project_ids]
-            
-
-        #extracting mac addresses of the badge    
+        #extracting badge id, project id and mac address
         with open(device_file, 'r') as devices_macs:
 
-            devices = [regex.findall(line) for line in devices_macs]                                        
-            devices = filter(lambda x: x, map(lambda x: x[0] if x else False, devices))
-            devices = [d.upper() for d in devices]
+            badge_project_ids =[]
+            devices = []
+
+            for line in devices_macs:
+                    if not line.lstrip().startswith('#'):
+                        device_details = line.split()
+                        print(device_details)
+                        devices.append(device_details[0])
+                        badge_project_ids.append(device_details[1:3])
+                    
         
-
         #mapping badge id and project id to mac address
         mac_id_map = {}    
         for i in range(len(devices)):
             mac_id_map[devices[i]] = badge_project_ids[i]
-
-            
         
         for d in devices:
             self.logger.debug("    {}".format(d))
 
         badges = {mac: Badge(mac,
                                        self.logger,
-                                       key=mac,  # using mac as key since no other key exists or can we use badge id or project for it ??
+                                       key=mac,  # using mac as key since no other key exists
                                        badge_id =mac_id_map[mac][0],
                                        project_id =mac_id_map[mac][1],
                                        init_audio_ts_int=self._init_ts,
@@ -131,4 +125,4 @@ if __name__ == "__main__":
 
     mgr = BadgeManagerStandalone(logger=logger,timestamp=1415463675)
     mgr.pull_badges_list()
-    print(mgr.badges)  
+    print(mgr.badges)

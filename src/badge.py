@@ -446,7 +446,8 @@ class Badge:
                     self.sendIdentifyReq(10)
 
                 if self.dlg.timestamp_sec != 0:
-                    self.logger.info("Badge datetime was: {},{} and Badge id : {} , and project id : {}".format(self.dlg.timestamp_sec, self.dlg.timestamp_ms,self.badge_id,self.project_id))
+                    self.logger.info("Badge datetime was: {},{}".format(self.dlg.timestamp_sec, self.dlg.timestamp_ms))
+                    self.logger.info("Badge id : {} , and project id : {}".format(self.badge_id, self.project_id))
                 else:
                     self.logger.info("Badge previously unsynced.")
 
