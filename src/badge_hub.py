@@ -13,6 +13,7 @@ import logging
 import json
 from time import time
 from datetime import datetime as dt
+import requests
 from requests.exceptions import RequestException
 import glob
 import traceback
@@ -404,24 +405,30 @@ def pull_devices(mgr, start_recording):
             # but sometimes it is. and when it is, it breaks
             if device['device_info']['adv_payload'] is not None:
                 b.last_voltage = device['device_info']['adv_payload']['voltage']
-            b.last_seen_ts = time.time()
+            b.last_seen_ts = time.time()            
             mgr.send_badge(device['mac'])
 
         # now the actual data collection 
         for device in scanned_devices:
             b = mgr.badges.get(device['mac'])
-            # try to update latest badge timestamps from the server
+            if(b.badge_id!=device['device_info']['adv_payload']['badge_id'] and b.project_id!=device['device_info']['adv_payload']['project_id']):
+                b.sync_timestamp()
+            # try to update latest badge timestamps from the server 
             mgr.pull_badge(b.addr)
             # pull data
             dialogue(b, activate_audio, activate_proximity, mode)
-
+            
+            
             # update timestamps on server
             mgr.send_badge(device['mac'])
 
             time.sleep(2)  # requires sleep between devices
 
+        time.sleep(2)  # allow BLE time to disconnect
+
         # clean up any leftover bluepy processes
         kill_bluepy()
+
 
 
 def sync_all_devices(mgr):
@@ -429,6 +436,7 @@ def sync_all_devices(mgr):
     mgr.pull_badges_list()
     for mac in mgr.badges:
         bdg = mgr.badges.get(mac)
+        #print(bdg.badge_id,"badge_id")
         bdg.sync_timestamp() 
         time.sleep(2)  # requires sleep between devices
 
@@ -495,6 +503,7 @@ def start_all_devices(mgr):
         time.sleep(2)  # allow BLE time to disconnect
 
 
+
 def load_badges(mgr, csv_file_name):
     logger.info("Loading badges from: {}".format(csv_file_name))
     with open(csv_file_name, 'r') as csvfile:
@@ -528,6 +537,8 @@ def add_scan_command_options(subparsers):
 def add_sync_all_command_options(subparsers):
     sa_parser = subparsers.add_parser('sync_all', help='Send date to all devices in whitelist')
 
+def add_set_id_command_options(subparsers):
+    sa_parser = subparsers.add_parser('set_id', help='Send id to all devices in whitelist')
 
 def add_start_all_command_options(subparsers):
     st_parser = subparsers.add_parser('start_all', help='Start recording on all devices in whitelist')
@@ -591,7 +602,6 @@ if __name__ == "__main__":
 
     if args.mode == "print_badges":
         print_badges(mgr)
-
 
 
     exit(0)

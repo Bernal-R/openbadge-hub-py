@@ -373,7 +373,7 @@ class Badge:
         long_epoch_seconds, ts_fract = now_utc_epoch()               
         self.dlg.expected = Expect.status       
         return self.conn.write('<cLHHB',"s",long_epoch_seconds,ts_fract,int(self.badge_id), int(self.project_id))
-
+        #return self.conn.write('<cLH',"s",long_epoch_seconds,ts_fract)
 
     # sends request to start recording, with specified timeout
     #   (if after timeout minutes badge has not seen server, it will stop recording)
@@ -438,6 +438,7 @@ class Badge:
 
             with timeout(seconds=5, error_message="Status request timeout (wrong firmware version?)"):
                 while not self.dlg.gotStatus:
+                    self.logger.info("Badge id : {} , and project id : {}".format(self.badge_id, self.project_id))
                     self.sendStatusRequest()  # ask for status
                     self.conn.waitForNotifications(WAIT_FOR)  # waiting for status report
 
@@ -446,8 +447,7 @@ class Badge:
                     self.sendIdentifyReq(10)
 
                 if self.dlg.timestamp_sec != 0:
-                    self.logger.info("Badge datetime was: {},{}".format(self.dlg.timestamp_sec, self.dlg.timestamp_ms))
-                    self.logger.info("Badge id : {} , and project id : {}".format(self.badge_id, self.project_id))
+                    self.logger.info("Badge datetime was: {},{}".format(self.dlg.timestamp_sec, self.dlg.timestamp_ms))                    
                 else:
                     self.logger.info("Badge previously unsynced.")
 

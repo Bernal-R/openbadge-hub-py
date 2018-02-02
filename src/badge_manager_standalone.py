@@ -44,7 +44,6 @@ class BadgeManagerStandalone():
             for line in devices_macs:
                     if not line.lstrip().startswith('#'):
                         device_details = line.split()
-                        print(device_details)
                         devices.append(device_details[0])
                         badge_project_ids.append(device_details[1:3])
                     
@@ -98,7 +97,28 @@ class BadgeManagerStandalone():
         :param mac:
         :return:
         """
-        pass # not implemented in standalone
+        try:
+            badge = self._badges[mac]
+            data = {
+                'last_audio_ts': badge.last_audio_ts_int,
+                'last_audio_ts_fract': badge.last_audio_ts_fract,
+                'last_proximity_ts': badge.last_proximity_ts,
+                'last_voltage': badge.last_voltage,
+                'last_seen_ts': badge.last_seen_ts,
+            }
+
+            self.logger.debug("Sending update badge data to server, badge {} : {}".format(badge.key, data))
+            response = requests.patch(BADGE_ENDPOINT(badge.key), data=data, headers=request_headers())
+            if response.ok is False:
+                if response.status_code == 400:
+                    self.logger.debug("Server had more recent date, badge {} : {}".format(badge.key, response.text))
+                else:
+                    raise Exception('Server sent a {} status code instead of 200: {}'.format(response.status_code,
+                                                                                         response.text))
+        except Exception as e:
+            self.logger.error('Error sending updated badge into to server: {}'.format(e))
+
+            
 
     def create_badge(self, name, email, mac):
         """
