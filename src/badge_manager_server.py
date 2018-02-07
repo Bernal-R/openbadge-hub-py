@@ -17,11 +17,14 @@ class BadgeManagerServer:
         return Badge(d.get('badge'),
                     self.logger,
                     d.get('key'),
+                    badge_id = d.get('badge_id'),
+                    project_id = d.get('id_project'),
                     init_audio_ts_int=conv(d.get('last_audio_ts')),
                     init_audio_ts_fract=conv(d.get('last_audio_ts_fract')),
                     init_proximity_ts=conv(d.get('last_proximity_ts')),
                     init_voltage=d.get('last_voltage')
         )
+
 
     def _read_badges_list_from_server(self, retry=True, retry_delay_sec=5):
         """
@@ -173,12 +176,14 @@ class BadgeManagerServer:
         except Exception as e:
             self.logger.error('Error sending updated badge into to server: {}'.format(e))
 
-    def create_badge(self, name, email, mac):
+    def create_badge(self, name, email, mac , badge_id ,project_id):
         """
         Creates a badge using the giving information
         :param name: user name
         :param email: user email
         :param mac: badge mac
+        :param badge_id: badge_id
+        :param project_id: project_id
         :return:
         """
         try:
@@ -186,6 +191,8 @@ class BadgeManagerServer:
                 'name': name,
                 'email': email,
                 'badge': mac,
+                'badge_id':badge_id,
+                'project_id':project_id,
             }
 
             self.logger.info("Creating new badge : {}".format(data))
