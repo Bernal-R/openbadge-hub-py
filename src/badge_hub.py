@@ -11,7 +11,7 @@ import csv
 
 import logging
 import json
-from time import time
+import time
 from datetime import datetime as dt
 import requests
 from requests.exceptions import RequestException
@@ -19,8 +19,10 @@ import glob
 import traceback
 
 from badge import *
-from badge_discoverer import BadgeDiscoverer
+from beacon import *
+from badge_discoverer import BadgeDiscoverer, BeaconDiscoverer
 from badge_manager_server import BadgeManagerServer
+from beacon_manager_server import BeaconManagerServer
 from badge_manager_standalone import BadgeManagerStandalone
 import hub_manager 
 from settings import DATA_DIR, LOG_DIR
@@ -219,7 +221,8 @@ def dialogue(bdg, activate_audio, activate_proximity, mode="server"):
                         'num_samples': len(chunk.samples),
                         'samples': chunk.samples,
                         'badge_address': addr,
-                        'member': bdg.key
+                        'member': bdg.key,
+                        'member_id':bdg.badge_id
                     }
                 }
 
@@ -263,7 +266,8 @@ def dialogue(bdg, activate_audio, activate_proximity, mode="server"):
                             {
                                 device.ID: {'rssi': device.rssi, 'count': device.count} for device in scan.devices
                                 },
-                        'member': bdg.key
+                        'member': bdg.key,
+                        'member_id':bdg.badge_id
                     }
                 }
 
@@ -303,12 +307,42 @@ def scan_for_devices(devices_whitelist):
     return scanned_devices
 
 
+def scan_for_bc_devices(devices_whitelist):
+    bc = BeaconDiscoverer(logger)
+    try:
+        all_bc_devices = bc.discover(scan_duration=SCAN_DURATION)
+    except Exception as e: # catch *all* exceptions
+        logger.error("Scan failed,{}".format(e))
+        all_bc_devices = {}
+
+    scanned_bc_devices = []
+    for addr,device_info in all_bc_devices.iteritems():
+        if addr in devices_whitelist:
+            logger.debug("\033[1;7m\033[1;32mFound {}, added. Device info: {}\033[0m".format(addr, device_info))
+            scanned_bc_devices.append({'mac':addr,'device_info':device_info})
+        else:
+            #logger.debug("Found {}, but not on whitelist. Device info: {}".format(addr, device_info))
+            pass
+
+    time.sleep(2)  # requires sometimes to prevent connection from failing
+    return scanned_bc_devices
+
+
 def create_badge_manager_instance(mode,timestamp):
     if mode == "server":
         mgr = BadgeManagerServer(logger=logger)
     else:
         mgr = BadgeManagerStandalone(logger=logger,timestamp=timestamp)
     return mgr
+
+
+def create_beacon_manager_instance(mode,timestamp):
+    if mode == "server":
+        mgrb = BeaconManagerServer(logger=logger)
+    else:
+        pass
+    return mgrb
+
 
 
 def reset():
@@ -334,6 +368,7 @@ def reset():
             connparam.write("17")
     else:
         logger.warn("Not a Raspberry Pi, Bluetooth connection parameters remain untouched (communication may be slower)")
+
 
     time.sleep(2)  # requires sleep after reset
     logger.info("Done resetting bluetooth")
@@ -370,7 +405,7 @@ def kill_bluepy():
         
         
 
-def pull_devices(mgr, start_recording):
+def pull_devices(mgr, mgrb, start_recording):
     logger.info('Started pulling')
     activate_audio = False
     activate_proximity = False
@@ -391,12 +426,14 @@ def pull_devices(mgr, start_recording):
 
     while True:
         mgr.pull_badges_list()
+        mgrb.pull_beacons_list()
         # When we refactor we can change this, but for now:
         if mode == "server":
             logger.info("Attempting to offload data to server")
             offload_data()
         logger.info("Scanning for devices...")
         scanned_devices = scan_for_devices(mgr.badges.keys())
+        scanned_beacons = scan_for_bc_devices(mgrb.beacons.keys())
         # iterate before the actual data collection loop just to offload
         # voltages to the server (and update heartbeat on server)
         for device in scanned_devices:
@@ -411,7 +448,7 @@ def pull_devices(mgr, start_recording):
         # now the actual data collection 
         for device in scanned_devices:
             b = mgr.badges.get(device['mac'])
-            if(b.badge_id!=device['device_info']['adv_payload']['badge_id'] and b.project_id!=device['device_info']['adv_payload']['project_id']):
+            if(b.badge_id!=device['device_info']['adv_payload']['badge_id'] or b.project_id!=device['device_info']['adv_payload']['project_id']):
                 b.sync_timestamp()
             # try to update latest badge timestamps from the server 
             mgr.pull_badge(b.addr)
@@ -424,7 +461,21 @@ def pull_devices(mgr, start_recording):
 
             time.sleep(2)  # requires sleep between devices
 
+
         time.sleep(2)  # allow BLE time to disconnect
+
+        for device in scanned_beacons:
+            bcn = mgrb.beacons.get(device['mac'])
+            mgrb.pull_beacon(bcn.addr)
+            bcn.last_voltage = device['device_info']['adv_payload']['voltage']
+            bcn.last_seen_ts = time.time()
+            mgrb.send_beacon(device['mac'])
+            
+
+            time.sleep(2)
+
+        time.sleep(2)
+
 
         # clean up any leftover bluepy processes
         kill_bluepy()
@@ -436,19 +487,21 @@ def sync_all_devices(mgr):
     mgr.pull_badges_list()
     for mac in mgr.badges:
         bdg = mgr.badges.get(mac)
-        #print(bdg.badge_id,"badge_id")
-        bdg.sync_timestamp() 
+        bdg.sync_timestamp()
         time.sleep(2)  # requires sleep between devices
 
     time.sleep(2)  # allow BLE time to disconnect
 
 
-def devices_scanner(mgr):
+def devices_scanner(mgr,mgrb):
     logger.info('Scanning for badges')
     mgr.pull_badges_list()
+    logger.info('Scanning for beacons')
+    mgrb.pull_beacons_list()
     while True:
         logger.info("Scanning for devices...")
-        scanned_devices = scan_for_devices(mgr.badges.keys())
+        scanned_devices = scan_for_devices(mgr.badges.keys()) + scan_for_bc_devices(mgrb.beacons.keys())
+
         with open(scans_file_name, "a") as fout:
             for device in scanned_devices:
                 mac = device['mac']
@@ -579,6 +632,7 @@ if __name__ == "__main__":
     args = parser.parse_args()
 
     mgr = create_badge_manager_instance(args.hub_mode, args.timestamp)
+    mgrb = create_beacon_manager_instance(args.hub_mode, args.timestamp)
 
     if not args.disable_reset_ble:
         reset()
@@ -588,11 +642,11 @@ if __name__ == "__main__":
 
     # scan for devices
     if args.mode == "scan":
-        devices_scanner(mgr)
+        devices_scanner(mgr,mgrb)
 
     # pull data from all devices
     if args.mode == "pull":
-        pull_devices(mgr, args.start_recording)
+        pull_devices(mgr, mgrb, args.start_recording)
 
     if args.mode == "start_all":
         start_all_devices(mgr)

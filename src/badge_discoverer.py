@@ -10,7 +10,7 @@ import traceback
 from bluepy import btle
 
 
-class BadgeDiscoverer:
+class BadgeDiscoverer(object):
     """
     Scan for badges
     """
@@ -24,7 +24,7 @@ class BadgeDiscoverer:
 
     def __init__(self,logger):
         self.logger = logger
-
+        
     def discover(self, scan_duration = 1): #seconds
         btle.Debugging = False
         scanner = btle.Scanner().withDelegate(ScanDummy())
@@ -122,6 +122,15 @@ class BadgeDiscoverer:
 class ScanDummy(btle.DefaultDelegate):
     def handleDiscovery(self, dev, is_new_dev, is_new_data):
         pass
+
+
+class BeaconDiscoverer(BadgeDiscoverer):
+    
+    def __init__(self,logger):
+        super(BeaconDiscoverer, self).__init__(logger)
+
+
+
 
 if __name__ == "__main__":
     import logging

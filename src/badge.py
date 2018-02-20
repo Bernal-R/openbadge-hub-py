@@ -214,7 +214,7 @@ class BadgeDelegate(DefaultDelegate):
         elif self.expected == Expect.scanHeader:
             self.tempScan.reset()
             header = struct.unpack('<LfB',data)
-            self.tempScan.setHeader(header) #time, voltage, number of devices
+            self.tempScan.setHeader(header) #timestamp_sec, voltage, number of devices
             #print self.tempScan.ts
             if (self.tempScan.ts == 0): # got an empty header? done
                 self.gotEndOfScans = True
@@ -274,11 +274,11 @@ class Badge:
 
     @property
     def badge_id(self):
-        return self.__badge_id
+        return self.badge_id
 
     @property   
     def project_id(self):
-        return self.__project_id    
+        return self.project_id    
 
     @property
     def last_proximity_ts(self):
@@ -355,6 +355,10 @@ class Badge:
 
         self.set_audio_ts(init_audio_ts_int, init_audio_ts_fract)
         self.__last_proximity_ts = init_proximity_ts
+
+
+
+    
 
     def connect(self):
         self.logger.info("Connecting to {}".format(self.addr))

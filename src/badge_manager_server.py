@@ -3,27 +3,31 @@ import requests
 import time
 
 from badge import *
-from server import BADGE_ENDPOINT, BADGES_ENDPOINT, request_headers
+from server import BADGE_ENDPOINT, BADGES_ENDPOINT, BEACON_ENDPOINT, BEACONS_ENDPOINT, request_headers
 from settings import APPKEY, HUB_UUID
 import traceback
 
 class BadgeManagerServer:
     def __init__(self, logger):
         self._badges = None
+        self._beacons = None
         self.logger = logger
+
+
 
     def _jason_badge_to_object(self, d):
         conv = lambda x: int(float(x))
         return Badge(d.get('badge'),
                     self.logger,
                     d.get('key'),
-                    badge_id = d.get('badge_id'),
-                    project_id = d.get('id_project'),
+                    badge_id = d.get('member_id'),
+                    project_id = d.get('project'),
                     init_audio_ts_int=conv(d.get('last_audio_ts')),
                     init_audio_ts_fract=conv(d.get('last_audio_ts_fract')),
                     init_proximity_ts=conv(d.get('last_proximity_ts')),
                     init_voltage=d.get('last_voltage')
         )
+
 
 
     def _read_badges_list_from_server(self, retry=True, retry_delay_sec=5):
@@ -42,7 +46,8 @@ class BadgeManagerServer:
                 if response.ok:
                     self.logger.info("Updating devices list ({})...".format(len(response.json())))
                     for d in response.json():
-                        server_badges[d.get('badge')] = self._jason_badge_to_object(d)
+                        if(d.get('active')==True):
+                            server_badges[d.get('badge')] = self._jason_badge_to_object(d)
                     done = True
                 else:
                     raise Exception('Got a {} from the server'.format(response.status_code))
@@ -57,6 +62,9 @@ class BadgeManagerServer:
                     time.sleep(retry_delay_sec)
 
         return server_badges
+
+
+
 
     def _read_badge_from_server(self, badge_key, retry=False, retry_delay_sec=5):
         """
@@ -85,6 +93,9 @@ class BadgeManagerServer:
                     time.sleep(retry_delay_sec)
 
         return None
+
+
+
 
     def _update_badge_with_server_badge(self,badge,server_badge):
         """
@@ -116,6 +127,9 @@ class BadgeManagerServer:
             #                  .format(mac, server_proximity_ts))
             pass
 
+
+     
+
     def pull_badges_list(self):
         # first time we read from server
         if self._badges is None:
@@ -135,6 +149,8 @@ class BadgeManagerServer:
                     server_badge = server_badges[mac]
                     self._update_badge_with_server_badge(badge,server_badge)
 
+
+
     def pull_badge(self, mac):
         """
         Contacts to server (if responding) and updates the given badge data
@@ -149,6 +165,8 @@ class BadgeManagerServer:
             # update timestamps if more recent
             self._update_badge_with_server_badge(badge, server_badge)
 
+
+
     def send_badge(self, mac):
         """
         Sends timestamps of the given badge to the server
@@ -158,6 +176,7 @@ class BadgeManagerServer:
         try:
             badge = self._badges[mac]
             data = {
+                'observed_id': badge.badge_id,
                 'last_audio_ts': badge.last_audio_ts_int,
                 'last_audio_ts_fract': badge.last_audio_ts_fract,
                 'last_proximity_ts': badge.last_proximity_ts,
@@ -175,6 +194,8 @@ class BadgeManagerServer:
                                                                                          response.text))
         except Exception as e:
             self.logger.error('Error sending updated badge into to server: {}'.format(e))
+
+
 
     def create_badge(self, name, email, mac , badge_id ,project_id):
         """
@@ -205,17 +226,24 @@ class BadgeManagerServer:
             s = traceback.format_exc()
             self.logger.error('Error creating new badge. Error: {} ,{}'.format(e,s))
 
+
+
     @property
     def badges(self):
         if self._badges is None:
             raise Exception('Badges list has not been initialized yet')
         return self._badges
 
+
+
+
+        
+
 if __name__ == "__main__":
     logging.basicConfig()
     logger = logging.getLogger('badge_server')
     logger.setLevel(logging.DEBUG)
-
+    
     mgr = BadgeManagerServer(logger=logger)
     mgr.pull_badges_list()
     print(mgr.badges)
@@ -227,3 +255,4 @@ if __name__ == "__main__":
 
     b1 = mgr.pull_badge(mac)
     print(b1)
+    
