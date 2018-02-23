@@ -10,7 +10,6 @@ import traceback
 class BadgeManagerServer:
     def __init__(self, logger):
         self._badges = None
-        self._beacons = None
         self.logger = logger
 
 
@@ -48,6 +47,7 @@ class BadgeManagerServer:
                     for d in response.json():
                         if(d.get('active')==True):
                             server_badges[d.get('badge')] = self._jason_badge_to_object(d)
+
                     done = True
                 else:
                     raise Exception('Got a {} from the server'.format(response.status_code))
@@ -176,7 +176,7 @@ class BadgeManagerServer:
         try:
             badge = self._badges[mac]
             data = {
-                'observed_id': badge.badge_id,
+                'observed_id': badge.observed_id,
                 'last_audio_ts': badge.last_audio_ts_int,
                 'last_audio_ts_fract': badge.last_audio_ts_fract,
                 'last_proximity_ts': badge.last_proximity_ts,
@@ -184,7 +184,13 @@ class BadgeManagerServer:
                 'last_seen_ts': badge.last_seen_ts,
             }
 
+
+
             self.logger.debug("Sending update badge data to server, badge {} : {}".format(badge.key, data))
+            self.logger.debug("Observed ID : {} | Member ID of badge in the server {}".format(badge.observed_id, badge.badge_id))
+            if(badge.observed_id != badge.badge_id):
+                self.logger.debug("Warning! Observed ID and Member ID of badge do not match. Observed ID : {} , Member ID : {}.Choose to ignore if it happens only once due to conflict in the IDs.Please check if happens again ".format(badge.observed_id, badge.badge_id))
+
             response = requests.patch(BADGE_ENDPOINT(badge.key), data=data, headers=request_headers())
             if response.ok is False:
                 if response.status_code == 400:

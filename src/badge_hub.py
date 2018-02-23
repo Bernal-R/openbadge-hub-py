@@ -222,7 +222,6 @@ def dialogue(bdg, activate_audio, activate_proximity, mode="server"):
                         'samples': chunk.samples,
                         'badge_address': addr,
                         'member': bdg.key,
-                        'member_id':bdg.badge_id
                     }
                 }
 
@@ -267,7 +266,6 @@ def dialogue(bdg, activate_audio, activate_proximity, mode="server"):
                                 device.ID: {'rssi': device.rssi, 'count': device.count} for device in scan.devices
                                 },
                         'member': bdg.key,
-                        'member_id':bdg.badge_id
                     }
                 }
 
@@ -442,7 +440,8 @@ def pull_devices(mgr, mgrb, start_recording):
             # but sometimes it is. and when it is, it breaks
             if device['device_info']['adv_payload'] is not None:
                 b.last_voltage = device['device_info']['adv_payload']['voltage']
-            b.last_seen_ts = time.time()            
+            b.last_seen_ts = time.time()
+            b.observed_id = device['device_info']['adv_payload']['badge_id']            
             mgr.send_badge(device['mac'])
 
         # now the actual data collection 
@@ -464,11 +463,26 @@ def pull_devices(mgr, mgrb, start_recording):
 
         time.sleep(2)  # allow BLE time to disconnect
 
+
         for device in scanned_beacons:
             bcn = mgrb.beacons.get(device['mac'])
-            mgrb.pull_beacon(bcn.addr)
-            bcn.last_voltage = device['device_info']['adv_payload']['voltage']
+            if device['device_info']['adv_payload'] is not None:
+                bcn.last_voltage = device['device_info']['adv_payload']['voltage']
             bcn.last_seen_ts = time.time()
+            bcn.observed_id = device['device_info']['adv_payload']['badge_id']
+                       
+            mgrb.send_beacon(device['mac'])
+
+
+
+        for device in scanned_beacons:
+            bcn = mgrb.beacons.get(device['mac'])
+            if(bcn.badge_id!=device['device_info']['adv_payload']['badge_id'] or bcn.project_id!=device['device_info']['adv_payload']['project_id']):
+                bcn.sync_timestamp()
+            mgrb.pull_beacon(bcn.addr)
+            #bcn.observed_id = device['device_info']['adv_payload']['badge_id']
+            dialogue(bcn, activate_audio, activate_proximity, mode)
+
             mgrb.send_beacon(device['mac'])
             
 
