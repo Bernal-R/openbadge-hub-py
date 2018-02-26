@@ -149,7 +149,7 @@ class BeaconManagerServer:
             }
 
             self.logger.debug("Sending update beacon data to server, beacon {} : {}".format(beacon.key, data))
-            self.logger.debug("Observed ID of beacon : {} : Beacon ID in the server : {}".format(beacon.observed_id, beacon.badge_id))
+            self.logger.debug("Observed ID of beacon : {} | Beacon ID in the server : {}".format(beacon.observed_id, beacon.badge_id))
             
             response = requests.patch(BEACON_ENDPOINT(beacon.key), data=data, headers=request_headers())
             if response.ok is False:

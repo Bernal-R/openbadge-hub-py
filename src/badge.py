@@ -276,6 +276,10 @@ class Badge:
     def badge_id(self):
         return self.badge_id
 
+    @property
+    def observed_id(self):
+        return self.observed_id
+
     @property   
     def project_id(self):
         return self.project_id    
@@ -337,7 +341,7 @@ class Badge:
             # no value is set yetyet
             return True
 
-    def __init__(self,addr,logger, key,badge_id,project_id, init_audio_ts_int=None, init_audio_ts_fract=None, init_proximity_ts=None, init_voltage=None):
+    def __init__(self,addr,logger, key,badge_id,project_id, init_audio_ts_int=None, init_audio_ts_fract=None, init_proximity_ts=None, init_voltage=None, observed_id=None):
         #if self.children.get(key):
         #    return self.children.get(key)
         self.children[key] = self        
@@ -346,6 +350,7 @@ class Badge:
         self.logger = adapter = BadgeAddressAdapter(logger, {'addr': addr})
         self.badge_id = badge_id
         self.project_id = project_id
+        self.observed_id = observed_id
         self.dlg = None
         self.conn = None
         self.connDialogue = BadgeDialogue(self)

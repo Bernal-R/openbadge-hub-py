@@ -480,8 +480,9 @@ def pull_devices(mgr, mgrb, start_recording):
 
         for device in scanned_beacons:
             bcn = mgrb.beacons.get(device['mac'])
-            if(bcn.badge_id!=device['device_info']['adv_payload']['badge_id'] or bcn.project_id!=device['device_info']['adv_payload']['project_id']):
-                bcn.sync_timestamp()
+            if device['device_info']['adv_payload'] is not None:
+                if(bcn.badge_id!=device['device_info']['adv_payload']['badge_id'] or bcn.project_id!=device['device_info']['adv_payload']['project_id']):
+                    bcn.sync_timestamp()
 
             mgrb.send_beacon(device['mac'])
             
