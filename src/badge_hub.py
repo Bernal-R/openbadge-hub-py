@@ -452,8 +452,6 @@ def pull_devices(mgr, mgrb, start_recording):
         # now the actual data collection 
         for device in scanned_devices:
             b = mgr.badges.get(device['mac'])
-            if(b.badge_id!=device['device_info']['adv_payload']['badge_id'] or b.project_id!=device['device_info']['adv_payload']['project_id']):
-                b.sync_timestamp()
             # try to update latest badge timestamps from the server 
             mgr.pull_badge(b.addr)
             # pull data

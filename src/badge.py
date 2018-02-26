@@ -543,6 +543,21 @@ class Badge:
                 self.connect()
 
             self.logger.info("Connected")
+            
+            # Sending status (and ids)
+            self.logger.info("Sending status request (Badge id : {} , project id : {})".format(self.badge_id, self.project_id))
+            with timeout(seconds=5, error_message="StartusRequest timeout (wrong firmware version?)"):
+                while not self.dlg.gotStatus:
+                    self.sendStatusRequest()  # start recording
+                    self.conn.waitForNotifications(WAIT_FOR)  # waiting for time acknowledgement
+
+                self.logger.info("Got time ack")
+
+                if self.dlg.timestamp_sec != 0:
+                    self.logger.info("Badge datetime was: {},{}".format(self.dlg.timestamp_sec, self.dlg.timestamp_ms))
+                else:
+                    self.logger.info("Badge previously unsynced.")
+
 
             if activate_audio:
                 # Starting audio rec
