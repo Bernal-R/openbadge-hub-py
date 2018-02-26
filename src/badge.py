@@ -446,9 +446,8 @@ class Badge:
                     self.sendStatusRequest()  # ask for status
                     self.conn.waitForNotifications(WAIT_FOR)  # waiting for status report
 
-                    self.logger.info("Got status")
-
-                    self.sendIdentifyReq(10)
+                self.logger.info("Got status")
+                self.sendIdentifyReq(5)
 
                 if self.dlg.timestamp_sec != 0:
                     self.logger.info("Badge datetime was: {},{}".format(self.dlg.timestamp_sec, self.dlg.timestamp_ms))                    
