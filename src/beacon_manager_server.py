@@ -17,7 +17,7 @@ class BeaconManagerServer:
 
     def _jason_beacon_to_object(self, d):
         conv = lambda x: int(float(x))
-        return Beacon(d.get('badge'),
+        return Badge(d.get('badge'),
                     self.logger,
                     d.get('key'),
                     badge_id = d.get('beacon_id'),
@@ -89,6 +89,17 @@ class BeaconManagerServer:
         return None
 
 
+    def _update_beacon_with_server_beacon(self,beacon,server_beacon):
+            """
+            Update the beacon properties from the server's copy
+            :param beacon:
+            :param server_beacon:
+            :return:
+            """
+    
+            # updates project id and badge id
+            beacon.badge_id = server_beacon.badge_id
+            beacon.project_id = server_beacon.project_id
 
 
     def pull_beacons_list(self):
@@ -104,7 +115,9 @@ class BeaconManagerServer:
                     # new beacon
                     self._beacons[mac] = server_beacons[mac]
                 else:
-                    pass
+                    beacon = self._beacons[mac]
+                    server_beacon = server_beacons[mac]
+                    self._update_beacon_with_server_beacon(beacon,server_beacon)
 
 
     def pull_beacon(self, mac):
@@ -118,7 +131,7 @@ class BeaconManagerServer:
         if server_beacon is None:
             self.logger.warn("Could not find device {} in server, or communication problem".format(beacon.key))
         else:
-            pass
+            self._update_beacon_with_server_beacon(beacon, server_beacon)
 
 
     def send_beacon(self, mac):

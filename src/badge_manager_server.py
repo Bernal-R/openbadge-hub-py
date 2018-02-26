@@ -127,6 +127,9 @@ class BadgeManagerServer:
             #                  .format(mac, server_proximity_ts))
             pass
 
+        # updates project id and badge id
+        badge.badge_id = server_badge.badge_id
+        badge.project_id = server_badge.project_id
 
      
 

@@ -425,6 +425,7 @@ def pull_devices(mgr, mgrb, start_recording):
     while True:
         mgr.pull_badges_list()
         mgrb.pull_beacons_list()
+
         # When we refactor we can change this, but for now:
         if mode == "server":
             logger.info("Attempting to offload data to server")
@@ -481,9 +482,6 @@ def pull_devices(mgr, mgrb, start_recording):
             bcn = mgrb.beacons.get(device['mac'])
             if(bcn.badge_id!=device['device_info']['adv_payload']['badge_id'] or bcn.project_id!=device['device_info']['adv_payload']['project_id']):
                 bcn.sync_timestamp()
-            mgrb.pull_beacon(bcn.addr)
-            #bcn.observed_id = device['device_info']['adv_payload']['badge_id']
-            dialogue(bcn, activate_audio, activate_proximity, mode)
 
             mgrb.send_beacon(device['mac'])
             
