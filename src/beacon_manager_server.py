@@ -138,9 +138,6 @@ class BeaconManagerServer:
             self.logger.debug("Sending update beacon data to server, beacon {} : {}".format(beacon.key, data))
             self.logger.debug("Observed ID of beacon : {} : Beacon ID in the server : {}".format(beacon.observed_id, beacon.badge_id))
             
-            if (beacon.observed_id != beacon.badge_id):
-                self.logger.debug("Warning! Observed ID and Beacon ID mentioned in the server do not match. Observed ID : {} , Member ID : {}.Choose to ignore if it happens only once due to conflict in the IDs.Please check if happens again ".format(beacon.observed_id,beacon.badge_id))
-
             response = requests.patch(BEACON_ENDPOINT(beacon.key), data=data, headers=request_headers())
             if response.ok is False:
                 if response.status_code == 400:

@@ -429,9 +429,10 @@ def pull_devices(mgr, mgrb, start_recording):
         if mode == "server":
             logger.info("Attempting to offload data to server")
             offload_data()
-        logger.info("Scanning for devices...")
+
+        logger.info("Scanning for members...")
         scanned_devices = scan_for_devices(mgr.badges.keys())
-        scanned_beacons = scan_for_bc_devices(mgrb.beacons.keys())
+
         # iterate before the actual data collection loop just to offload
         # voltages to the server (and update heartbeat on server)
         for device in scanned_devices:
@@ -440,8 +441,12 @@ def pull_devices(mgr, mgrb, start_recording):
             # but sometimes it is. and when it is, it breaks
             if device['device_info']['adv_payload'] is not None:
                 b.last_voltage = device['device_info']['adv_payload']['voltage']
+                b.observed_id = device['device_info']['adv_payload']['badge_id']
+                if(b.observed_id != b.badge_id):
+                    logger.debug("Warning! Observed ID and Member ID of badge do not match. Observed ID : {} , Member ID : {}".format(b.observed_id, b.badge_id))
+
             b.last_seen_ts = time.time()
-            b.observed_id = device['device_info']['adv_payload']['badge_id']            
+
             mgr.send_badge(device['mac'])
 
         # now the actual data collection 
@@ -453,27 +458,26 @@ def pull_devices(mgr, mgrb, start_recording):
             mgr.pull_badge(b.addr)
             # pull data
             dialogue(b, activate_audio, activate_proximity, mode)
-            
-            
+                        
             # update timestamps on server
             mgr.send_badge(device['mac'])
 
             time.sleep(2)  # requires sleep between devices
 
 
-        time.sleep(2)  # allow BLE time to disconnect
-
-
+        logger.info("Scanning for beacons...")
+        scanned_beacons = scan_for_bc_devices(mgrb.beacons.keys())
         for device in scanned_beacons:
             bcn = mgrb.beacons.get(device['mac'])
             if device['device_info']['adv_payload'] is not None:
                 bcn.last_voltage = device['device_info']['adv_payload']['voltage']
+                bcn.observed_id = device['device_info']['adv_payload']['badge_id']
+                if (bcn.observed_id != bcn.badge_id):
+                    logger.debug("Warning! Observed ID and Beacon ID mentioned in the server do not match. Observed ID : {} , Beacon ID : {}.".format(bcn.observed_id,bcn.badge_id))
+
             bcn.last_seen_ts = time.time()
-            bcn.observed_id = device['device_info']['adv_payload']['badge_id']
                        
             mgrb.send_beacon(device['mac'])
-
-
 
         for device in scanned_beacons:
             bcn = mgrb.beacons.get(device['mac'])
@@ -485,10 +489,9 @@ def pull_devices(mgr, mgrb, start_recording):
 
             mgrb.send_beacon(device['mac'])
             
-
             time.sleep(2)
 
-        time.sleep(2)
+        time.sleep(2)  # allow BLE time to disconnect
 
 
         # clean up any leftover bluepy processes

@@ -188,8 +188,6 @@ class BadgeManagerServer:
 
             self.logger.debug("Sending update badge data to server, badge {} : {}".format(badge.key, data))
             self.logger.debug("Observed ID : {} | Member ID of badge in the server {}".format(badge.observed_id, badge.badge_id))
-            if(badge.observed_id != badge.badge_id):
-                self.logger.debug("Warning! Observed ID and Member ID of badge do not match. Observed ID : {} , Member ID : {}.Choose to ignore if it happens only once due to conflict in the IDs.Please check if happens again ".format(badge.observed_id, badge.badge_id))
 
             response = requests.patch(BADGE_ENDPOINT(badge.key), data=data, headers=request_headers())
             if response.ok is False:
